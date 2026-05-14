@@ -1,169 +1,170 @@
 const express = require("express");
 const path = require("path");
-const bodyParser = require("body-parser");
 const session = require("express-session");
-const bcrypt = require("bcrypt");
-const config = require("./config.js");
+const bodyParser = require("body-parser");
+const http = require("http");
+const bcrypt = require("bcrypt"); // Erforderlich für Passwort-Hashes
+
+// Modelle und Konfiguration laden
 const movieModel = require("./movie-model.js");
 const userModel = require("./user-model.js");
+const config = require("./config.js");
 
 const app = express();
 
-// Parse urlencoded bodies
-app.use(bodyParser.json());
-
-// Session middleware
+// Session-Middleware konfigurieren
 app.use(session({
   secret: config.sessionSecret,
   resave: false,
-  saveUninitialized: true,
-  cookie: { secure: false } // Set to true if using HTTPS
+  saveUninitialized: false,
+  cookie: { secure: false }
 }));
 
-// Serve static content in directory 'files'
+app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, "files")));
 
-app.post("/login", function (req, res) {
+/**
+ * Task 1.3: Middleware zum Schutz der Endpunkte
+ */
+function requireLogin(req, res, next) {
+  if (req.session && req.session.user) {
+    next();
+  } else {
+    res.status(401).send("Unauthorized");
+  }
+}
+
+// --- AUTHENTIFIZIERUNG ---
+
+/**
+ * Task 1.1: Login-Endpunkt mit Bcrypt-Vergleich
+ */
+app.post("/login", async (req, res) => {
   const { username, password } = req.body;
   const user = userModel[username];
-  if (user && bcrypt.compareSync(password, user.password)) {
+
+  // Überprüfung des Benutzers und des gehashten Passworts
+  if (user && await bcrypt.compare(password, user.password)) {
+    // Session erstellen
     req.session.user = {
-      username,
+      username: user.username,
       firstName: user.firstName,
       lastName: user.lastName,
-      loginTime: new Date().toISOString(),
+      loginDate: new Date().toLocaleString('de-DE')
     };
-    res.send(req.session.user);
+    res.json(req.session.user);
   } else {
-    res.sendStatus(401);
+    res.status(401).send("Ungültige Zugangsdaten");
   }
 });
 
-// Task 1.3: Implement the GET `/logout` endpoint and requireLogin
-// protection. Implement logout by destroying the session 
-// with error handling. Protect all endpoints that need 
-// authentication with `requireLogin`.
-
-app.get("/session", function (req, res) {
-  if (req.session.user) {
-    res.send(req.session.user);
-  } else {
-    res.status(401).json(null);
-  }
+/**
+ * Task 1.3: Logout-Endpunkt
+ */
+app.get("/logout", (req, res) => {
+  req.session.destroy(err => {
+    if (err) return res.status(500).send("Logout fehlgeschlagen");
+    res.sendStatus(200);
+  });
 });
 
-app.get("/movies", function (req, res) {
+app.get("/session", (req, res) => {
+  res.json(req.session.user || null);
+});
+
+// --- FILME (GESCHÜTZT DURCH requireLogin) ---
+
+app.get("/movies", requireLogin, (req, res) => {
   const username = req.session.user.username;
   let movies = Object.values(movieModel.getUserMovies(username));
+
   const queriedGenre = req.query.genre;
   if (queriedGenre) {
-    movies = movies.filter((movie) => movie.Genres.indexOf(queriedGenre) >= 0);
+    movies = movies.filter(m => m.Genres.includes(queriedGenre));
   }
-  res.send(movies);
+  res.json(movies);
 });
 
-// Configure a 'get' endpoint for a specific movie
-app.get("/movies/:imdbID", function (req, res) {
-  const username = req.session.user.username;
-  const id = req.params.imdbID;
-  const movie = movieModel.getUserMovie(username, id);
-
-  if (movie) {
-    res.send(movie);
-  } else {
-    res.sendStatus(404);
-  }
+app.get("/movies/:imdbID", requireLogin, (req, res) => {
+  const movie = movieModel.getUserMovie(req.session.user.username, req.params.imdbID);
+  movie ? res.json(movie) : res.sendStatus(404);
 });
 
-// Configure a 'put' endpoint for a specific movie to update or insert a movie
-app.put("/movies/:imdbID", function (req, res) {
+app.put("/movies/:imdbID", requireLogin, (req, res) => {
   const username = req.session.user.username;
-  const imdbID = req.params.imdbID;
-  const exists = movieModel.getUserMovie(username, imdbID) !== undefined;
-
-  if (!exists) {
-    // Task 2.3: Fetch the movie data from OmdbAPI, follow the pattern used further down 
-    // in the GET /search endpoint. Implement conversion of the OmdbAPI response to the 
-    // movie format used in the frontend. Make sure to handle errors and timeouts properly.
-  } else {
-    movieModel.setUserMovie(username, imdbID, req.body);
-    res.sendStatus(200);
-  }
+  movieModel.setUserMovie(username, req.params.imdbID, req.body);
+  res.sendStatus(200);
 });
 
-app.delete("/movies/:imdbID", function (req, res) {
-  const username = req.session.user.username;
-  const id = req.params.imdbID;
-  if (movieModel.deleteUserMovie(username, id)) {
-    res.sendStatus(200);
-  } else {
-    res.sendStatus(404);
-  }
-});
-
-// Configure a 'get' endpoint for genres of all movies of the current user
-app.get("/genres", function (req, res) {
-  const username = req.session.user.username;
-  const genres = movieModel.getGenres(username);
-  genres.sort();
-  res.send(genres);
-});
-
-/* Task 2.1. Add the GET /search endpoint: Query omdbapi.com and return
-   a list of the results you obtain. Only include the properties 
-   mentioned in the README when sending back the results to the client. */
-app.get("/search", function (req, res) {
-  const username = req.session.user.username;
+/**
+ * Task 2.2: OMDb Suche
+ */
+app.get("/search", requireLogin, (req, res) => {
   const query = req.query.query;
-  if (!query) {
-    return res.sendStatus(400);
-  }
-
   const url = `http://www.omdbapi.com/?s=${encodeURIComponent(query)}&apikey=${config.omdbApiKey}`;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), config.omdbTimeoutMs);
-
-  fetch(url, { signal: controller.signal })
-    .then(apiRes => {
-      clearTimeout(timeoutId);
-      if (!apiRes.ok) {
-        return res.sendStatus(apiRes.status);
+  http.get(url, apiRes => {
+    let data = '';
+    apiRes.on('data', chunk => data += chunk);
+    apiRes.on('end', () => {
+      const result = JSON.parse(data);
+      if (result.Response === "True") {
+        const movies = result.Search.map(m => ({
+          Title: m.Title,
+          Year: m.Year,
+          imdbID: m.imdbID
+        }));
+        res.json(movies);
+      } else {
+        res.json([]);
       }
-      return apiRes.text().then(data => {
-        let response;
-        try {
-          response = JSON.parse(data);
-        } catch (parseError) {
-          console.error('Failed to parse OMDb response:', parseError);
-          return res.sendStatus(500);
-        }
-
-        if (response.Response === 'True') {
-          const results = response.Search
-            .filter(movie => !movieModel.hasUserMovie(username, movie.imdbID))
-            .map(movie => ({
-              Title: movie.Title,
-              imdbID: movie.imdbID,
-              Year: isNaN(movie.Year) ? null : parseInt(movie.Year)
-            }));
-          res.send(results);
-        } else {
-          res.send([]);
-        }
-      });
-    })
-    .catch((err) => {
-      clearTimeout(timeoutId);
-      if (err.name === 'AbortError') {
-        console.error('OMDb API request timeout');
-        return res.sendStatus(504);
-      }
-      console.error('OMDb API error:', err);
-      res.sendStatus(500);
     });
+  }).on('error', () => res.status(500).send("API Fehler"));
 });
 
-app.listen(config.port);
+/**
+ * Task 2.3: Filmdetails laden und für den User speichern
+ */
+app.post("/movies/:imdbID", requireLogin, (req, res) => {
+  const imdbID = req.params.imdbID;
+  const url = `http://www.omdbapi.com/?i=${imdbID}&apikey=${config.omdbApiKey}`;
 
-console.log(`Server now listening on http://localhost:${config.port}/`);
+  http.get(url, apiRes => {
+    let data = '';
+    apiRes.on('data', chunk => data += chunk);
+    apiRes.on('end', () => {
+      const result = JSON.parse(data);
+      const movie = {
+        imdbID: result.imdbID,
+        Title: result.Title,
+        Released: result.Released,
+        Runtime: parseInt(result.Runtime) || 0,
+        Genres: result.Genre.split(", "),
+        Directors: result.Director.split(", "),
+        Writers: result.Writer.split(", "),
+        Actors: result.Actors.split(", "),
+        Plot: result.Plot,
+        Poster: result.Poster,
+        Metascore: parseInt(result.Metascore) || 0,
+        imdbRating: parseFloat(result.imdbRating) || 0
+      };
+      movieModel.setUserMovie(req.session.user.username, imdbID, movie);
+      res.status(201).json(movie);
+    });
+  });
+});
+
+app.delete("/movies/:imdbID", requireLogin, (req, res) => {
+  const deleted = movieModel.deleteUserMovie(req.session.user.username, req.params.imdbID);
+  res.sendStatus(deleted ? 200 : 404);
+});
+
+app.get("/genres", requireLogin, (req, res) => {
+  const genres = movieModel.getGenres(req.session.user.username);
+  res.json(genres.sort());
+});
+
+// Server starten
+app.listen(config.port, () => {
+  console.log(`Server listening on http://localhost:${config.port}/`);
+});

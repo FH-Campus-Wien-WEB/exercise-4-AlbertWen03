@@ -2,142 +2,89 @@ export class ElementBuilder {
   constructor(tag) {
     this.element = document.createElement(tag);
   }
-
-  id(id) {
-    this.element.dataset.imdbID = id;
-    return this;
-  }
-
-  class(clazz) {
-    this.element.classList.add(clazz);
-    return this;
-  }
-
-  pluralizedText(content, array) {
-    return this.text(array.length > 1 ? content + "s" : content);
-  }
-
-  text(content) {
-    this.element.textContent = content;
-    return this;
-  }
-
-  with(name, value) {
-    this.element.setAttribute(name, value);
-    return this;
-  }
-
-  listener(name, listener) {
-    this.element.addEventListener(name, listener);
-    return this;
-  }
-
+  id(id) { this.element.id = id; return this; }
+  className(className) { this.element.className = className; return this; }
+  text(text) { this.element.textContent = text; return this; }
   append(child) {
-    child.appendTo(this.element);
+    if (child instanceof ElementBuilder) this.element.appendChild(child.build());
+    else if (child instanceof HTMLElement) this.element.appendChild(child);
     return this;
   }
-
   appendTo(parent) {
-    parent.append(this.element);
+    if (parent instanceof HTMLElement) parent.appendChild(this.element);
+    else if (typeof parent === "string") document.querySelector(parent).appendChild(this.element);
     return this.element;
   }
-
-  insertBefore(parent, sibling) {
-    parent.insertBefore(this.element, sibling);
-    return this.element;
-  }
+  build() { return this.element; }
 }
 
-export class ParentChildBuilder extends ElementBuilder {
-  constructor(parentTag, childTag) {
-    super(parentTag);
-    this.childTag = childTag;
-  }
-
-  append(text) {
-    const childCreator = new ElementBuilder(this.childTag).text(text);
-    if (this.childClazz) {
-      childCreator.class(this.childClazz);
-    }
-
-    super.append(childCreator);
-  }
-
-  childClass(childClazz) {
-    this.childClazz = childClazz;
-    return this;
-  }
-
-  items() {
-    if (arguments.length === 1 && Array.isArray(arguments[0])) {
-      arguments[0].forEach((item) => this.append(item));
-    } else {
-      for (var i = 0; i < arguments.length; i++) {
-        this.append(arguments[i]);
-      }
-    }
-
-    return this;
-  }
-}
-
-class ParagraphBuilder extends ParentChildBuilder {
-  constructor() {
-    super("p", "span");
-  }
-}
-
-class ListBuilder extends ParentChildBuilder {
-  constructor() {
-    super("ul", "li");
-  }
-}
-
-function formatRuntime(runtime) {
-  const hours = Math.trunc(runtime / 60);
-  const minutes = runtime % 60;
-  return hours + "h " + minutes + "m";
-}
-
-export class MovieBuilder extends ElementBuilder {
-  constructor(movie, deleteMovie, isLoggedIn) {
-    super("article")
-      .id(movie.imdbID)
-      .append(new ElementBuilder("img").with("src", movie.Poster))
-      .append(new ElementBuilder("h1").text(movie.Title));
-
-    if (isLoggedIn) {
-      this.append(
-        new ElementBuilder("p")
-          .append(new ButtonBuilder("Edit").onclick(() => location.href = "edit.html?imdbID=" + movie.imdbID))
-          .append(new ButtonBuilder("Delete").onclick(() => deleteMovie(movie.imdbID)))
-      );
-    }
-
-    this.append(
-        new ParagraphBuilder().items(
-          "Runtime " + formatRuntime(movie.Runtime),
-          "\u2022",
-          "Released on " + new Date(movie.Released).toLocaleDateString("en-US")
-        )
-      )
-      .append(new ParagraphBuilder().childClass("genre").items(movie.Genres))
-      .append(new ElementBuilder("p").text(movie.Plot))
-      .append(new ElementBuilder("h2").pluralizedText("Director", movie.Directors))
-      .append(new ListBuilder().items(movie.Directors))
-      .append(new ElementBuilder("h2").pluralizedText("Writer", movie.Writers))
-      .append(new ListBuilder().items(movie.Writers))
-      .append(new ElementBuilder("h2").pluralizedText("Actor", movie.Actors))
-      .append(new ListBuilder().items(movie.Actors));
-  }
-}
-
-export class ButtonBuilder extends ElementBuilder {
+export class ButtonBuilder {
   constructor(text) {
-    super("button").with("type", "button").text(text)
+    this.element = document.createElement("button");
+    this.element.textContent = text;
+  }
+  onclick(callback) {
+    this.element.onclick = callback;
+    return this;
+  }
+  build() { return this.element; }
+}
+
+export class MovieBuilder {
+  constructor(movie, onDeleteCallback) {
+    this.movie = movie;
+    this.onDelete = onDeleteCallback;
+    this.element = new ElementBuilder("article").id(movie.imdbID).className("movie-card");
+    this.build();
   }
 
-  onclick(handler) {
-    return this.listener("click", handler)
+  build() {
+    const img = new ElementBuilder("img").build();
+    img.src = this.movie.Poster;
+    this.element.append(img);
+
+    const content = new ElementBuilder("div").className("movie-content");
+    content.append(new ElementBuilder("h2").text(this.movie.Title));
+
+    // Action Buttons oben
+    const actionRow = new ElementBuilder("div").className("action-row");
+    actionRow.append(new ButtonBuilder("Edit").onclick(() => window.location.href = `edit.html?imdbID=${this.movie.imdbID}`).build());
+    actionRow.append(new ButtonBuilder("Delete").onclick(() => {
+      if(confirm(`Möchtest du "${this.movie.Title}" löschen?`)) this.onDelete(this.movie.imdbID);
+    }).build());
+    content.append(actionRow);
+
+    // Scores in Schwarz
+    const scoresRow = new ElementBuilder("div").className("scores-row");
+    scoresRow.append(new ElementBuilder("span").className("score-black").text(`Metascore: ${this.movie.Metascore}`));
+    scoresRow.append(new ElementBuilder("span").className("score-black").text(`IMDb: ${this.movie.imdbRating}/10`));
+    content.append(scoresRow);
+
+    content.append(new ElementBuilder("p").className("meta-info").text(`Runtime: ${this.movie.Runtime} min • Released: ${this.movie.Released}`));
+
+    const genreContainer = new ElementBuilder("div").className("genre-container");
+    this.movie.Genres.forEach(g => genreContainer.append(new ElementBuilder("span").className("genre-tag").text(g)));
+    content.append(genreContainer);
+
+    content.append(new ElementBuilder("p").className("plot").text(this.movie.Plot));
+
+    // Crew Info mit Listen (Dots und untereinander)
+    const crew = new ElementBuilder("div").className("crew-info");
+
+    const addList = (label, items) => {
+      crew.append(new ElementBuilder("strong").text(label));
+      const ul = new ElementBuilder("ul").className("crew-list");
+      items.forEach(item => ul.append(new ElementBuilder("li").text(item)));
+      crew.append(ul);
+    };
+
+    addList("Director:", this.movie.Directors);
+    addList("Writers:", this.movie.Writers);
+    addList("Actors:", this.movie.Actors);
+
+    content.append(crew);
+    this.element.append(content);
   }
+
+  appendTo(parent) { this.element.appendTo(parent); }
 }

@@ -1,243 +1,170 @@
 import { ButtonBuilder, ElementBuilder, MovieBuilder } from "./builders.js";
 
-// Externalized message strings
-const messages = {
-  dataLoadError: 'Daten konnten nicht geladen werden, Status',
-  movieAlreadyInCollection: 'Film bereits in der Sammlung.',
-  addMovieFailed: 'Hinzufügen des Films ist fehlgeschlagen.',
-  deleteMovieFailed: 'Film konnte nicht gelöscht werden.',
-  noResultsFound: 'Keine Ergebnisse gefunden.',
-  searchFailed: 'Die Suche ist fehlgeschlagen...',
-  loggedOutGreeting: 'Bitte logge dich ein, um deine Filmkollektion zu sehen.',
-  loginFailed: 'Login failed'
-};
-
 let currentSession = null;
 
-function updateGenres() {
-  const header = document.querySelector('nav>h2');
-  const listElement = document.querySelector("#filter");
+/**
+ * Task 1.2: Begrüßung rendern
+ */
+function renderUserGreeting() {
+  const greetingEl = document.getElementById("userGreeting");
+  if (currentSession) {
+    greetingEl.textContent = `Hi ${currentSession.firstName}, du hast dich am ${currentSession.loginDate} angemeldet.`;
+  } else {
+    greetingEl.textContent = "";
+  }
+}
 
-  listElement.innerHTML = '';
+/**
+ * Task 1.1: Login Handling
+ */
+async function handleLogin(event) {
+  event.preventDefault();
+  const formData = new FormData(event.target);
+  const data = Object.fromEntries(formData.entries());
 
-  if (!currentSession) {
-    header.style.display = 'none';
+  const response = await fetch('/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+
+  if (response.ok) {
+    currentSession = await response.json();
+    document.getElementById("loginDialog").close();
+    updateUI();
+    loadMovies();
+    loadGenres();
+    renderUserGreeting();
+  } else {
+    alert("Login fehlgeschlagen!");
+  }
+}
+
+/**
+ * Task 2.2: OMDb Suche ausführen
+ */
+async function searchMovies(event) {
+  event.preventDefault();
+  const query = document.getElementById("query").value;
+  const response = await fetch(`/search?query=${encodeURIComponent(query)}`);
+  const results = await response.json();
+
+  const container = document.getElementById("searchResults");
+  container.innerHTML = "";
+
+  if (results.length === 0) {
+    container.textContent = "Keine Filme gefunden.";
     return;
   }
 
-  fetch("/genres")
-    .then(response => {
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return response.json();
-    })
-    .then(genres => {
-      header.style.display = 'block';
-      new ElementBuilder("li").append(new ButtonBuilder("All").onclick(() => loadMovies()))
-        .appendTo(listElement);
-
-      for (const genre of genres) {
-        new ElementBuilder("li").append(new ButtonBuilder(genre).onclick(() => loadMovies(genre)))
-          .appendTo(listElement);
-      }
-
-      const firstButton = listElement.querySelector("button");
-      if (firstButton) {
-        firstButton.click();
-      }
-    })
-    .catch(error => {
-      console.error('Failed to load genres:', error);
-      listElement.append(`${messages.dataLoadError} ${error.message}`);
-    });
+  // Suchergebnisse wie in image_792794.jpg rendern
+  results.forEach(movie => {
+    const div = document.createElement("div");
+    div.className = "search-result-item";
+    div.style.margin = "10px 0";
+    div.innerHTML = `
+            <span>${movie.Title} (${movie.Year})</span>
+            <button type="button" class="add-btn">Add</button>
+        `;
+    div.querySelector(".add-btn").onclick = () => addMovieFromServer(movie.imdbID, div);
+    container.appendChild(div);
+  });
 }
 
-function removeMovies() {
-  const mainElement = document.querySelector("main");
-  while (mainElement.childElementCount > 0) {
-    mainElement.firstChild.remove();
+/**
+ * Task 2.3: Film zur Sammlung hinzufügen
+ */
+async function addMovieFromServer(imdbID, element) {
+  const response = await fetch(`/movies/${imdbID}`, { method: 'POST' });
+  if (response.ok) {
+    element.remove();
+    loadMovies();
+    loadGenres();
   }
 }
 
-function loadMovies(genre) {
-  const url = new URL("/movies", location.href);
-  if (genre) {
-    url.searchParams.set("genre", genre);
+/**
+ * Steuert die Sichtbarkeit der Buttons
+ */
+function updateUI() {
+  const authBtn = document.getElementById("authBtn");
+  const addMoviesBtn = document.getElementById("addMoviesBtn");
+
+  if (currentSession) {
+    authBtn.textContent = "Logout";
+    authBtn.onclick = () => {
+      fetch('/logout').then(() => {
+        currentSession = null;
+        location.reload(); // Einfachster Weg für Reset
+      });
+    };
+    addMoviesBtn.style.display = "inline-block";
+    // Hier wird die Funktion für den Dialog verknüpft!
+    addMoviesBtn.onclick = () => {
+      document.getElementById("searchDialog").showModal();
+    };
+  } else {
+    authBtn.textContent = "Login";
+    authBtn.onclick = () => document.getElementById("loginDialog").showModal();
+    addMoviesBtn.style.display = "none";
   }
-
-  fetch(url)
-    .then(response => {
-      removeMovies();
-      const mainElement = document.querySelector("main");
-
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return response.json();
-    })
-    .then(movies => {
-      const mainElement = document.querySelector("main");
-      movies.forEach(movie => new MovieBuilder(movie, deleteMovie, Boolean(currentSession)).appendTo(mainElement));
-    })
-    .catch(error => {
-      console.error('Failed to load movies:', error);
-      const mainElement = document.querySelector("main");
-      mainElement.append(`${messages.dataLoadError} ${error.message}`);
-    });
 }
 
-function addMovie(imdbID) {
-  fetch(`/movies/${imdbID}`, { method: 'PUT' })
-    .then(response => {
-      if (response.status === 201) {
-        // Task 2.2: Make sure to remove the added movie from the search results to avoid
-        // giving the user the option to add it again.
-    
-        loadMovies();
-        updateGenres();
-      } else if (response.status === 200) {
-        alert(messages.movieAlreadyInCollection);
-      } else {
-        throw new Error(`HTTP ${response.status}`);
-      }
-    })
-    .catch(error => {
-      console.error('Failed to add movie:', error);
-      alert(messages.addMovieFailed);
-    });
+async function loadMovies(genre) {
+  if (!currentSession) return;
+  let url = "/movies";
+  if (genre) url += `?genre=${encodeURIComponent(genre)}`;
+  const res = await fetch(url);
+  const movies = await res.json();
+  const main = document.querySelector("main");
+  main.innerHTML = "";
+  movies.forEach(m => new MovieBuilder(m, deleteMovie).appendTo(main));
 }
 
-function deleteMovie(imdbID) {
-  fetch(`/movies/${imdbID}`, { method: 'DELETE' })
-    .then(response => {
-      if (response.ok) {
-        const article = document.getElementById(imdbID);
-        if (article) {
-          article.remove();
-        }
-        updateGenres();
-      } else {
-        throw new Error(`HTTP ${response.status}`);
-      }
-    })
-    .catch(error => {
-      console.error('Failed to delete movie:', error);
-      alert(messages.deleteMovieFailed);
-    });
+async function loadGenres() {
+  if (!currentSession) return;
+  const res = await fetch("/genres");
+  const genres = await res.json();
+  const filter = document.getElementById("filter");
+  filter.innerHTML = "";
+
+  // "All" Button
+  const allLi = document.createElement("li");
+  allLi.appendChild(new ButtonBuilder("All").onclick(() => loadMovies()).build());
+  filter.appendChild(allLi);
+
+  genres.forEach(g => {
+    const li = document.createElement("li");
+    li.appendChild(new ButtonBuilder(g).onclick(() => loadMovies(g)).build());
+    filter.appendChild(li);
+  });
 }
 
-function searchMovies(query) {
-  fetch(`/search?query=${encodeURIComponent(query)}`)
-    .then(response => {
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return response.json();
-    })
-    .then(results => {
-      const resultsDiv = document.getElementById("searchResults");
-      resultsDiv.innerHTML = '';
-
-      // Task 2.2: Render the results returned from the server. Make sure to
-      // include an "Add" button for each result that calls `addMovie(imdbID)` when clicked.
-      // There is a second part to this task, in `addMovie`
-
-    })
-    .catch(error => {
-      console.error('Search failed:', error);
-      const resultsDiv = document.getElementById("searchResults");
-      new ElementBuilder("p").text(messages.searchFailed).appendTo(resultsDiv);
-    });
-}
-
-window.onload = function () {
-  // Check session
-  fetch("/session")
-    .then(response => {
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return response.json();
-    })
-    .then(data => {
-      currentSession = data || null;
-      updateUI();
-    })
-    .catch(error => {
-      console.error('Failed to load session:', error);
-      currentSession = null;
-      updateUI();
-    });
-
-  function renderUserGreeting() {
-    const greetingElement = document.getElementById('userGreeting');
-    if (currentSession) {
-      // Task 1.2: Render a user greeting to `#userGreeting` 
-      // using `firstName`, `lastName`, and the server-provided
-      // login timestamp.
-    } else {
-      greetingElement.textContent = messages.loggedOutGreeting;
-    }
+async function deleteMovie(imdbID) {
+  const res = await fetch(`/movies/${imdbID}`, { method: 'DELETE' });
+  if (res.ok) {
+    document.getElementById(imdbID).remove();
+    loadGenres();
   }
+}
 
-  function updateUI() {
-    const authBtn = document.getElementById('authBtn');
-    const addMoviesBtn = document.getElementById('addMoviesBtn');
-
+// Initialisierung beim Laden der Seite
+window.onload = async () => {
+  // 1. Session checken
+  const res = await fetch('/session');
+  const session = await res.json();
+  if (session) {
+    currentSession = session;
+    loadMovies();
+    loadGenres();
     renderUserGreeting();
-    updateGenres();
-
-    if (currentSession) {
-      authBtn.textContent = 'Logout';
-      authBtn.onclick = () => {
-        fetch("/logout")
-          .then(response => {
-            if (response.ok) {
-              currentSession = null;
-              updateUI();
-            }
-          })
-          .catch(error => {
-            console.error('Logout failed:', error);
-          });
-      };
-      addMoviesBtn.style.display = 'inline';
-    } else {
-      removeMovies();
-      authBtn.textContent = 'Login';
-      authBtn.onclick = () => {
-        const loginForm = document.getElementById('loginForm');
-        loginForm.reset();
-        document.getElementById('loginDialog').showModal();
-      };
-      addMoviesBtn.style.display = 'none';
-    }
   }
+  updateUI();
 
-  // Login dialog
-  document.getElementById('loginForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
+  // 2. Event Listener binden
+  document.getElementById("loginForm").onsubmit = handleLogin;
+  document.getElementById("cancelLogin").onclick = () => document.getElementById("loginDialog").close();
 
-    // Task 1.1: Implement the login submit flow to call `POST /login` 
-    // with username and password, handle errors, save the response 
-    // into `currentSession`, then call `updateUI()` and `loadMovies()`.
-
-  });
-
-  document.getElementById('cancelLogin').addEventListener('click', () => {
-    document.getElementById('loginDialog').close();
-  });
-
-  // Search dialog
-  document.getElementById('addMoviesBtn').addEventListener('click', () => {
-    const searchForm = document.getElementById('searchForm');
-    searchForm.reset();
-    document.getElementById('searchResults').innerHTML = '';
-    document.getElementById('searchDialog').showModal();
-  });
-
-  document.getElementById('searchForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const query = document.getElementById('query').value;
-    searchMovies(query);
-  });
-
-  document.getElementById('cancelSearch').addEventListener('click', () => {
-    document.getElementById('searchDialog').close();
-  });
+  document.getElementById("searchForm").onsubmit = searchMovies;
+  document.getElementById("cancelSearch").onclick = () => document.getElementById("searchDialog").close();
 };
-

@@ -1,62 +1,36 @@
 {
   "joe": {
-    "tt0399295": {
-      "imdbID": "tt0399295",
-      "Title": "Lord of War",
-      "Released": "2005-09-15",
-      "Runtime": 122,
-      "Genres": [
-        "Crime",
-        "Drama"
-      ],
-      "Directors": [
-        "Andrew Niccol"
-      ],
-      "Writers": [
-        "Andrew Niccol"
-      ],
-      "Actors": [
-        "Nicolas Cage",
-        "Ethan Hawke",
-        "Jared Leto"
-      ],
-      "Plot": "An arms dealer confronts the morality of his work as he is being chased by an INTERPOL Agent.",
-      "Poster": "https://m.media-amazon.com/images/M/MV5BNThlY2NkYmMtNTFhNi00MzBiLWJmNzEtZjk5MzYwYWU2MjllXkEyXkFqcGc@._V1_SX300.jpg",
-      "Metascore": 62,
-      "imdbRating": 7.6
-    },
-    "tt0167260": {
-      "imdbID": "tt0167260",
-      "Title": "The Lord of the Rings: The Return of the King",
-      "Released": "2003-12-16",
-      "Runtime": 201,
+    "tt0100054": {
+      "imdbID": "tt0100054",
+      "Title": "Lord of the Flies",
+      "Released": "16 Mar 1990",
+      "Runtime": 90,
       "Genres": [
         "Adventure",
         "Drama",
-        "Fantasy"
+        "Thriller"
       ],
       "Directors": [
-        "Peter Jackson"
+        "Harry Hook"
       ],
       "Writers": [
-        "J.R.R. Tolkien",
-        "Fran Walsh",
-        "Philippa Boyens"
+        "William Golding",
+        "Jay Presson Allen"
       ],
       "Actors": [
-        "Elijah Wood",
-        "Viggo Mortensen",
-        "Ian McKellen"
+        "Balthazar Getty",
+        "Chris Furrh",
+        "Danuel Pipoly"
       ],
-      "Plot": "Gandalf and Aragorn lead the World of Men against Sauron's army to draw his gaze from Frodo and Sam as they approach Mount Doom with the One Ring.",
-      "Poster": "https://m.media-amazon.com/images/M/MV5BMTZkMjBjNWMtZGI5OC00MGU0LTk4ZTItODg2NWM3NTVmNWQ4XkEyXkFqcGc@._V1_SX300.jpg",
-      "Metascore": 94,
-      "imdbRating": 9
+      "Plot": "Stranded on an island, a group of schoolboys degenerate into savagery.",
+      "Poster": "https://m.media-amazon.com/images/M/MV5BMGFmNWUwMTItMmM1Mi00YmFmLWE3Y2YtNjIyYTcxN2M5MjY3XkEyXkFqcGc@._V1_SX300.jpg",
+      "Metascore": 49,
+      "imdbRating": 6.4
     },
     "tt0057261": {
       "imdbID": "tt0057261",
       "Title": "Lord of the Flies",
-      "Released": "1963-08-12",
+      "Released": "13 Aug 1963",
       "Runtime": 92,
       "Genres": [
         "Adventure",
@@ -79,6 +53,34 @@
       "Poster": "https://m.media-amazon.com/images/M/MV5BY2RiOTM0ZDgtNDRlMi00MDMzLWI1NDYtY2NjZDM4YTkwNWVlXkEyXkFqcGc@._V1_SX300.jpg",
       "Metascore": 67,
       "imdbRating": 6.9
+    },
+    "tt0120737": {
+      "imdbID": "tt0120737",
+      "Title": "The Lord of the Rings: The Fellowship of the Ring",
+      "Released": "19 Dec 2001",
+      "Runtime": 178,
+      "Genres": [
+        "Adventure",
+        "Drama",
+        "Fantasy"
+      ],
+      "Directors": [
+        "Peter Jackson"
+      ],
+      "Writers": [
+        "J.R.R. Tolkien",
+        "Fran Walsh",
+        "Philippa Boyens"
+      ],
+      "Actors": [
+        "Elijah Wood",
+        "Ian McKellen",
+        "Orlando Bloom"
+      ],
+      "Plot": "A meek Hobbit from the Shire and eight companions set out on a journey to destroy the powerful One Ring and save Middle-earth from the Dark Lord Sauron.",
+      "Poster": "https://m.media-amazon.com/images/M/MV5BNzIxMDQ2YTctNDY4MC00ZTRhLTk4ODQtMTVlOWY4NTdiYmMwXkEyXkFqcGc@._V1_QL75_UX380_CR0,1,380,562_.jpg",
+      "Metascore": 92,
+      "imdbRating": 8.9
     }
   },
   "jane": {
@@ -87,6 +89,10 @@
       "Title": "King Arthur: Legend of the Sword",
       "Released": "2017-05-11",
       "Runtime": 126,
+      "Plot": "Robbed of his birthright, Arthur comes up the hard way in the back alleys of the city. But once he pulls the sword from the stone, he is forced to acknowledge his true legacy - whether he likes it or not.",
+      "Poster": "https://m.media-amazon.com/images/M/MV5BMjM3ODY3Njc5Ml5BMl5BanBnXkFtZTgwMjQ5NjM5MTI@._V1_SX300.jpg",
+      "Metascore": 41,
+      "imdbRating": 6.7,
       "Genres": [
         "Action",
         "Adventure",
@@ -98,23 +104,23 @@
       "Writers": [
         "Joby Harold",
         "Guy Ritchie",
-        "Lionel Wigram"
+        "Lionel Wigrams"
       ],
       "Actors": [
         "Charlie Hunnam",
         "Astrid Bergès-Frisbey",
         "Jude Law"
-      ],
-      "Plot": "Robbed of his birthright, Arthur comes up the hard way in the back alleys of the city. But once he pulls the sword from the stone, he is forced to acknowledge his true legacy - whether he likes it or not.",
-      "Poster": "https://m.media-amazon.com/images/M/MV5BMjM3ODY3Njc5Ml5BMl5BanBnXkFtZTgwMjQ5NjM5MTI@._V1_SX300.jpg",
-      "Metascore": 41,
-      "imdbRating": 6.7
+      ]
     },
     "tt0360717": {
       "imdbID": "tt0360717",
       "Title": "King Kong",
       "Released": "2005-12-13",
       "Runtime": 187,
+      "Plot": "A greedy film producer assembles a team of moviemakers and sets out for the infamous Skull Island, where they find more than just cannibalistic natives.",
+      "Poster": "https://m.media-amazon.com/images/M/MV5BMWY0NWE0ZjUtNjRlOS00ZDViLTgxNTQtMGMwN2FhNDY1YTg2XkEyXkFqcGc@._V1_SX300.jpg",
+      "Metascore": 81,
+      "imdbRating": 7.2,
       "Genres": [
         "Action",
         "Adventure",
@@ -126,17 +132,13 @@
       "Writers": [
         "Fran Walsh",
         "Philippa Boyens",
-        "Peter Jackson"
+        "Peter Jacksons"
       ],
       "Actors": [
         "Naomi Watts",
         "Jack Black",
         "Adrien Brody"
-      ],
-      "Plot": "A greedy film producer assembles a team of moviemakers and sets out for the infamous Skull Island, where they find more than just cannibalistic natives.",
-      "Poster": "https://m.media-amazon.com/images/M/MV5BMWY0NWE0ZjUtNjRlOS00ZDViLTgxNTQtMGMwN2FhNDY1YTg2XkEyXkFqcGc@._V1_SX300.jpg",
-      "Metascore": 81,
-      "imdbRating": 7.2
+      ]
     },
     "tt0110357": {
       "imdbID": "tt0110357",
